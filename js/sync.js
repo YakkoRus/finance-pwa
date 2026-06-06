@@ -41,6 +41,32 @@ async function importData(data) {
   await merge('wishlist', data.wishlist || []);
 }
 
+async function findGistId(token) {
+  // Ищем gist с описанием "Finance DB backup" среди всех гистов пользователя
+  try {
+    const headers = {
+      'Authorization': 'token ' + token,
+      'Accept': 'application/vnd.github.v3+json',
+    };
+    // Получаем список всех гистов (с фильтром по страницам)
+    let page = 1;
+    while (true) {
+      const resp = await fetch('https://api.github.com/gists?per_page=100&page=' + page, { headers });
+      if (!resp.ok) break;
+      const gists = await resp.json();
+      if (!gists.length) break;
+      for (const g of gists) {
+        if (g.description === 'Finance DB backup' && g.files && g.files['finance.json']) {
+          return g.id;
+        }
+      }
+      if (gists.length < 100) break;
+      page++;
+    }
+  } catch (e) { /* fallback */ }
+  return null;
+}
+
 async function pushToGist(token) {
   if (!token) throw new Error('Токен не задан');
   const data = await exportData();
@@ -72,7 +98,12 @@ async function pushToGist(token) {
 
 async function pullFromGist(token) {
   if (!token) throw new Error('Токен не задан');
-  const gistId = getGistId();
+  let gistId = getGistId();
+  // Если ID не сохранён локально — ищем среди всех гистов
+  if (!gistId) {
+    gistId = await findGistId(token);
+    if (gistId) setGistId(gistId);
+  }
   if (!gistId) return null;
   const headers = { 'Authorization': 'token ' + token, 'Accept': 'application/vnd.github.v3+json' };
   const resp = await fetch('https://api.github.com/gists/' + gistId, { headers });
