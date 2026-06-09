@@ -3,7 +3,8 @@
 const PAGES = ['dashboard', 'expenses', 'income', 'savings', 'investments'];
 const PAGE_LABELS = { dashboard: 'Дашборд', expenses: 'Расходы', income: 'Доходы', savings: 'Накопления', investments: 'Инвестиции' };
 let currentPage = 'dashboard';
-let chartMonthIdx = 0; // индекс текущего месяца для переключаемой диаграммы
+let chartMonthIdx = 0;
+let expOffset = 0, expHasMore = true, expFilters = {};
 
 const PALETTE = ['#3fb950','#58a6ff','#a371f7','#f85149','#d2991d','#f778ba','#7ee787','#a5d6ff','#e3b341','#ff7b72','#79c0ff','#d2a8ff'];
 
@@ -29,7 +30,7 @@ async function navigate(page) {
   document.getElementById('content').innerHTML = '';
   switch (page) {
     case 'dashboard': await renderDashboard(); break;
-    case 'expenses': await renderExpenses(); break;
+    case 'expenses': expOffset = 0; expHasMore = true; expFilters = {}; await renderExpenses(); break;
     case 'income': await renderIncome(); break;
     case 'savings': await renderSavings(); break;
     case 'investments': await renderInvestments(); break;
@@ -51,38 +52,24 @@ async function renderDashboard() {
   const s = await dashboardSummary();
   const breakdown = await monthlyBreakdown(12);
   const c = document.getElementById('content');
-
   const fields = [
     ['Доходы', s.totalIncome, 'positive'], ['Расходы', s.totalExpenses, 'negative'],
     ['Баланс', s.balance, s.balance >= 0 ? 'positive' : 'negative'],
     ['Кошелёк', s.wallet, s.wallet >= 0 ? 'positive' : 'negative'],
     ['Накоплено', s.totalSavings, 'neutral'], ['Желаемое', s.wishlistTotal, 'neutral'],
   ];
-
   let h = '<div class="card"><h2>Сводка</h2><div class="dash-grid">';
   fields.forEach(([l,v,cls]) => h += `<div class="dash-item"><div class="label">${l}</div><div class="value ${cls}">${Math.round(v).toLocaleString()}</div></div>`);
   h += '</div></div>';
 
-  // Годовая диаграмма
   if (breakdown.length) {
-    const max = Math.max(...breakdown.map(b => Math.max(b.income, b.expenses))) * 1.2 || 1;
-    h += '<div class="card"><h2>Год</h2><div class="chart-container">';
+    h += '<div class="card"><h2>Год</h2><table><thead><tr><th>Месяц</th><th>Доходы</th><th>Расходы</th><th>Баланс</th></tr></thead><tbody>';
     breakdown.forEach(b => {
-      const ip = (b.income / max * 100).toFixed(1);
-      const ep = (b.expenses / max * 100).toFixed(1);
-      h += `<div class="month-row">
-        <div class="month-label">${b.month.slice(5)}.${b.month.slice(2,4)}</div>
-        <div class="month-bars">
-          <div class="bar-income" style="width:${ip}%"><span class="bar-label">${Math.round(b.income).toLocaleString()}</span></div>
-          <div class="bar-expense" style="width:${ep}%"><span class="bar-label">${Math.round(b.expenses).toLocaleString()}</span></div>
-        </div>
-        <div class="month-balance" style="color:${b.balance>=0?'var(--green)':'var(--red)'}">${b.balance>=0?'+':''}${Math.round(b.balance).toLocaleString()}</div>
-      </div>`;
+      h += `<tr><td>${b.month.slice(5)}.${b.month.slice(2,4)}</td><td style="color:var(--green)">+${Math.round(b.income).toLocaleString()}</td><td style="color:var(--red)">-${Math.round(b.expenses).toLocaleString()}</td><td style="color:${b.balance>=0?'var(--green)':'var(--red)'};font-weight:700;">${b.balance>=0?'+':''}${Math.round(b.balance).toLocaleString()}</td></tr>`;
     });
-    h += '<div class="chart-legend"><span class="legend-income">Доходы</span><span class="legend-expense">Расходы</span></div></div></div>';
+    h += '</tbody></table></div>';
   }
 
-  // Месячная диаграмма (последний месяц по умолчанию)
   if (breakdown.length) {
     chartMonthIdx = breakdown.length - 1;
     h += `<div class="card"><h2>Месяц</h2><div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
@@ -91,16 +78,16 @@ async function renderDashboard() {
       <button class="btn small" onclick="shiftMonth(1)">▶</button>
     </div><div id="month-chart-area"></div></div>`;
   }
-
   c.innerHTML = h;
   if (breakdown.length) renderMonthChart();
 }
 
 window.shiftMonth = (dir) => {
-  monthlyBreakdown(12).then(data => {
+  monthlyBreakdown(12).then(async data => {
     chartMonthIdx = Math.max(0, Math.min(data.length - 1, chartMonthIdx + dir));
-    document.getElementById('chart-month-label').textContent = data[chartMonthIdx].month.slice(5) + '.' + data[chartMonthIdx].month.slice(2,4);
-    renderMonthChart();
+    const d = data[chartMonthIdx];
+    document.getElementById('chart-month-label').textContent = d.month.slice(5) + '.' + d.month.slice(2,4);
+    await renderMonthChart();
   });
 };
 
@@ -112,56 +99,101 @@ async function renderMonthChart() {
   const max = Math.max(b.income, b.expenses) * 1.2 || 1;
   const ip = (b.income / max * 100).toFixed(1);
   const ep = (b.expenses / max * 100).toFixed(1);
-  area.innerHTML = `
-    <div class="month-row" style="margin-bottom:6px;">
-      <div class="month-bars">
-        <div class="bar-income" style="width:${ip}%"><span class="bar-label">+${Math.round(b.income).toLocaleString()}</span></div>
-        <div class="bar-expense" style="width:${ep}%"><span class="bar-label">-${Math.round(b.expenses).toLocaleString()}</span></div>
-      </div>
-    </div>
-    <div style="font-weight:700;color:${b.balance>=0?'var(--green)':'var(--red)'};">Баланс: ${b.balance>=0?'+':''}${Math.round(b.balance).toLocaleString()}</div>`;
+  let h = `<div style="margin-bottom:8px;font-size:14px;">
+    <span style="color:var(--green)">Доходы: +${Math.round(b.income).toLocaleString()}</span>&nbsp;&nbsp;
+    <span style="color:var(--red)">Расходы: -${Math.round(b.expenses).toLocaleString()}</span>&nbsp;&nbsp;
+    <span style="font-weight:700;color:${b.balance>=0?'var(--green)':'var(--red)'}">Баланс: ${b.balance>=0?'+':''}${Math.round(b.balance).toLocaleString()}</span>
+  </div>`;
+
+  const cats = await categoryBreakdown(b.month);
+  if (cats.length) {
+    h += '<div style="font-size:12px;color:var(--text-muted);margin-bottom:4px;">Расходы по категориям:</div>';
+    cats.forEach(c => {
+      const color = c.color || '#8b949e';
+      h += `<div style="display:flex;align-items:center;gap:6px;margin-bottom:2px;font-size:12px;">
+        <span style="width:8px;height:8px;background:${color};border-radius:2px;flex-shrink:0;"></span>
+        <span style="flex:1;">${c.name}</span>
+        <span style="color:var(--text-muted);min-width:50px;text-align:right;">${Math.round(c.amount).toLocaleString()}</span>
+        <span style="font-weight:600;min-width:36px;text-align:right;">${c.percent}%</span>
+      </div>`;
+    });
+  }
+  area.innerHTML = h;
 }
 
 // ═══ Expenses ═══
-async function renderExpenses(filters = {}) {
+async function renderExpenses() {
   const categories = await listCategories();
-  const expenses = await listExpenses(filters);
+  const { items, total } = await listExpensesPaginated({ ...expFilters, offset: expOffset });
   const c = document.getElementById('content');
 
   let h = `<div class="card">
     <div class="filter-bar">
-      <input id="exp-search" placeholder="Поиск по товару..." value="${filters.search||''}" onchange="applyExpenseFilters()" style="flex:2;">
+      <input id="exp-search" placeholder="Поиск по товару..." value="${expFilters.search||''}" onchange="applyExpenseFilters()" style="flex:2;">
       <select id="exp-cat" onchange="applyExpenseFilters()"><option value="">Все категории</option>${categories.map(c => `<option value="${c.id}">${c.name}</option>`).join('')}</select>
       <select id="exp-sort" onchange="applyExpenseFilters()">
-        <option value="date" ${(filters.sortField||'date')==='date'?'selected':''}>По дате</option>
-        <option value="amount" ${filters.sortField==='amount'?'selected':''}>По сумме</option>
-        <option value="product" ${filters.sortField==='product'?'selected':''}>По названию</option>
+        <option value="date" ${(expFilters.sortField||'date')==='date'?'selected':''}>По дате</option>
+        <option value="amount" ${expFilters.sortField==='amount'?'selected':''}>По сумме</option>
+        <option value="product" ${expFilters.sortField==='product'?'selected':''}>По названию</option>
       </select>
       <button class="btn-add" onclick="showExpenseModal()" title="Добавить">+</button>
       <button class="btn small" onclick="showCategoriesModal()">Категории</button>
     </div>
-    <table><thead><tr><th></th><th>Категория</th><th>Товар</th><th>Сумма</th><th>Дата</th><th></th></tr></thead><tbody>`;
+    <table><thead><tr><th></th><th>Категория</th><th>Товар</th><th>Сумма</th><th>Дата</th><th></th></tr></thead><tbody id="exp-tbody">`;
 
-  expenses.forEach(e => {
+  items.forEach(e => {
     const color = categoryColor(categories, e.category_id);
     const stripe = color ? `<div style="width:4px;height:20px;background:${color};border-radius:2px;flex-shrink:0;"></div>` : '';
     h += `<tr><td>${stripe}</td><td>${categoryName(categories, e.category_id)}</td><td>${e.product}</td><td style="color:var(--red)">-${e.amount.toLocaleString()}</td><td>${fmtDate(e.date)}</td><td><button class="btn-del" onclick="deleteExpenseAndRefresh(${e.id})">-</button></td></tr>`;
   });
   h += '</tbody></table></div>';
-  if (!expenses.length) h += '<div style="text-align:center;padding:24px;color:var(--text-muted);">Нет расходов</div>';
+  if (expOffset + items.length < total) h += '<div id="exp-sentinel" style="height:20px;"></div>';
+  if (!items.length && expOffset === 0) h += '<div style="text-align:center;padding:24px;color:var(--text-muted);">Нет расходов</div>';
+
   c.innerHTML = h;
-  if (filters.categoryId) document.getElementById('exp-cat').value = filters.categoryId;
+  if (expFilters.categoryId) document.getElementById('exp-cat').value = expFilters.categoryId;
+
+  // бесконечная прокрутка
+  const sentinel = document.getElementById('exp-sentinel');
+  if (sentinel) {
+    const observer = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting && expHasMore) {
+        expOffset += 20;
+        loadMoreExpenses();
+      }
+    }, { rootMargin: '100px' });
+    observer.observe(sentinel);
+  }
+}
+
+async function loadMoreExpenses() {
+  const categories = await listCategories();
+  const { items, total } = await listExpensesPaginated({ ...expFilters, offset: expOffset });
+  const tbody = document.getElementById('exp-tbody');
+  if (!tbody) return;
+  const sentinel = document.getElementById('exp-sentinel');
+  items.forEach(e => {
+    const color = categoryColor(categories, e.category_id);
+    const stripe = color ? `<div style="width:4px;height:20px;background:${color};border-radius:2px;flex-shrink:0;"></div>` : '';
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${stripe}</td><td>${categoryName(categories, e.category_id)}</td><td>${e.product}</td><td style="color:var(--red)">-${e.amount.toLocaleString()}</td><td>${fmtDate(e.date)}</td><td><button class="btn-del" onclick="deleteExpenseAndRefresh(${e.id})">-</button></td>`;
+    tbody.appendChild(tr);
+  });
+  if (expOffset + items.length >= total) { if (sentinel) sentinel.remove(); expHasMore = false; }
 }
 
 window.applyExpenseFilters = () => {
-  renderExpenses({
+  expFilters = {
     search: document.getElementById('exp-search')?.value || '',
     categoryId: parseInt(document.getElementById('exp-cat')?.value) || null,
-    sortField: document.getElementById('exp-sort')?.value || 'date', sortDir: 'desc',
-  });
+    sortField: document.getElementById('exp-sort')?.value || 'date',
+    sortDir: 'desc',
+  };
+  expOffset = 0; expHasMore = true;
+  renderExpenses();
 };
 
-async function deleteExpenseAndRefresh(id) { await deleteExpense(id); applyExpenseFilters(); }
+async function deleteExpenseAndRefresh(id) { await deleteExpense(id); expOffset = 0; expHasMore = true; renderExpenses(); }
 
 async function showExpenseModal() {
   const cats = await listCategories();
@@ -177,7 +209,7 @@ async function showExpenseModal() {
     const p = document.getElementById('em-product').value, a = parseFloat(document.getElementById('em-amount').value);
     if (!p || !a) return;
     await addExpense(cid, p, a, document.getElementById('em-date').value);
-    closeModal(); applyExpenseFilters();
+    closeModal(); expOffset = 0; expHasMore = true; renderExpenses();
   };
 }
 
@@ -188,35 +220,18 @@ async function showCategoriesModal() {
     <div class="form-row"><input id="cat-name" placeholder="Новая категория"><input id="cat-color" placeholder="#3fb950" style="flex:0;width:100px;"><button class="btn" onclick="addCategoryAction()" style="flex:0;">Добавить</button></div>
     <div class="mb-8" style="display:flex;gap:4px;flex-wrap:wrap;">${PALETTE.map(c => `<span style="display:inline-block;width:24px;height:24px;background:${c};border-radius:4px;cursor:pointer;border:1px solid var(--border);" onclick="document.getElementById('cat-color').value='${c}'" title="${c}"></span>`).join('')}</div>
     <table><tbody>
-      ${cats.map(c => `<tr>
-        <td><span style="display:inline-block;width:14px;height:14px;background:${c.color||'transparent'};border-radius:3px;margin-right:8px;vertical-align:middle;"></span>${c.name}</td>
-        <td style="font-size:12px;color:var(--text-muted);">${c.color||''}</td>
-        <td><button class="btn small" onclick="editCategoryColor(${c.id},'${c.name}','${c.color||''}')">✏</button></td>
-        <td><button class="btn-del" onclick="deleteCategoryAction(${c.id})">-</button></td>
-      </tr>`).join('')}
+      ${cats.map(c => `<tr><td><span style="display:inline-block;width:14px;height:14px;background:${c.color||'transparent'};border-radius:3px;margin-right:8px;vertical-align:middle;"></span>${c.name}</td><td style="font-size:12px;color:var(--text-muted);">${c.color||''}</td><td><button class="btn small" onclick="editCategoryColor(${c.id},'${c.name}','${c.color||''}')">✏</button></td><td><button class="btn-del" onclick="deleteCategoryAction(${c.id})">-</button></td></tr>`).join('')}
     </tbody></table>
     <div class="modal-actions"><button class="btn" onclick="closeModal()">Закрыть</button></div>`);
-  window.addCategoryAction = async () => {
-    const n = document.getElementById('cat-name').value.trim();
-    if (!n) return;
-    await addCategory(n, document.getElementById('cat-color').value || null);
-    closeModal(); showCategoriesModal();
-  };
-  window.deleteCategoryAction = async (id) => {
-    try { await deleteCategory(id); closeModal(); showCategoriesModal(); } catch (e) { alert(e.message); }
-  };
+  window.addCategoryAction = async () => { const n = document.getElementById('cat-name').value.trim(); if (!n) return; await addCategory(n, document.getElementById('cat-color').value || null); closeModal(); showCategoriesModal(); };
+  window.deleteCategoryAction = async (id) => { try { await deleteCategory(id); closeModal(); showCategoriesModal(); } catch (e) { alert(e.message); } };
   window.editCategoryColor = (id, name, color) => {
     showModal(`<button class="modal-close" onclick="closeModal()">x</button><h2>Изменить: ${name}</h2>
       <div class="form-group"><label>Название</label><input id="ecat-name" value="${name.replace(/"/g,'"')}"></div>
       <div class="form-group"><label>Цвет</label><input id="ecat-color" value="${color}"></div>
       <div class="mb-8" style="display:flex;gap:4px;flex-wrap:wrap;">${PALETTE.map(c => `<span style="display:inline-block;width:24px;height:24px;background:${c};border-radius:4px;cursor:pointer;border:1px solid var(--border);" onclick="document.getElementById('ecat-color').value='${c}'" title="${c}"></span>`).join('')}</div>
       <div class="modal-actions"><button class="btn" onclick="closeModal()">Отмена</button><button class="btn" style="border-color:var(--green);color:var(--green);" onclick="saveCategoryEdit(${id})">Сохранить</button></div>`);
-    window.saveCategoryEdit = async (cid) => {
-      const n = document.getElementById('ecat-name').value.trim();
-      if (!n) return;
-      await updateCategory(cid, n, document.getElementById('ecat-color').value || null);
-      closeModal(); closeModal(); showCategoriesModal();
-    };
+    window.saveCategoryEdit = async (cid) => { const n = document.getElementById('ecat-name').value.trim(); if (!n) return; await updateCategory(cid, n, document.getElementById('ecat-color').value || null); closeModal(); closeModal(); showCategoriesModal(); };
   };
 }
 
@@ -225,7 +240,6 @@ async function renderIncome() {
   const items = await listIncome();
   const c = document.getElementById('content');
   const el = { cash: 'Наличные', card: 'Карта', crypto: 'Крипта' };
-
   let h = `<div class="card"><div class="section-actions"><span></span><button class="btn-add" onclick="showIncomeModal()" title="Добавить">+</button></div>
     <table><thead><tr><th>Источник</th><th>Тип</th><th>Валюта</th><th>Сумма</th><th>Примечание</th><th>Дата</th><th></th></tr></thead><tbody>`;
   items.forEach(i => h += `<tr><td>${i.source}</td><td><span class="badge ${i.equivalent}">${el[i.equivalent]||i.equivalent}</span></td><td>${i.currency}</td><td style="color:var(--green)">+${i.amount.toLocaleString()}</td><td>${i.note||''}</td><td>${fmtDate(i.date)}</td><td><button class="btn-del" onclick="deleteIncomeAndRefresh(${i.id})">-</button></td></tr>`);
@@ -259,7 +273,6 @@ async function renderSavings() {
   const wishItems = await listWishlist();
   const c = document.getElementById('content');
   const sl = { active: 'Активен', inactive: 'Не активен', completed: 'Выполнено' };
-
   let h = `<div class="section-actions"><span></span><button class="btn-add" onclick="showSavingsModal()" title="Добавить">+</button></div>`;
   plans.forEach(p => {
     const fc = p.percent >= 100 ? 'done' : p.percent >= 50 ? '' : 'warning';
@@ -279,7 +292,6 @@ async function renderSavings() {
     h += '</div>';
   });
   if (!plans.length) h += '<div style="text-align:center;padding:24px;color:var(--text-muted);">Нет планов</div>';
-
   h += '<h2 style="margin:1.5rem 0 0.75rem;">Список желаний</h2><div class="section-actions"><span></span><button class="btn-add" onclick="showWishlistModal()" title="Добавить">+</button></div>';
   if (wishItems.length) {
     h += '<div class="card"><table><thead><tr><th>Цель</th><th>Цена</th><th>Примечание</th><th></th></tr></thead><tbody>';
@@ -325,11 +337,7 @@ async function showWishlistModal() {
     <div class="form-group"><label>Цена</label><input type="number" id="wm-cost" placeholder="0"></div>
     <div class="form-group"><label>Примечание</label><input id="wm-purpose" placeholder="Ссылка или описание (до 200 символов)" maxlength="200"></div>
     <div class="modal-actions"><button class="btn" onclick="closeModal()">Отмена</button><button class="btn" id="wm-save" style="border-color:var(--green);color:var(--green);">Добавить</button></div>`);
-  document.getElementById('wm-save').onclick = async () => {
-    const item = document.getElementById('wm-item').value; if (!item) return;
-    await addWishlistItem(item, parseFloat(document.getElementById('wm-cost').value) || 0, document.getElementById('wm-purpose').value);
-    closeModal(); renderSavings();
-  };
+  document.getElementById('wm-save').onclick = async () => { const item = document.getElementById('wm-item').value; if (!item) return; await addWishlistItem(item, parseFloat(document.getElementById('wm-cost').value) || 0, document.getElementById('wm-purpose').value); closeModal(); renderSavings(); };
 }
 
 // ═══ Investments ═══

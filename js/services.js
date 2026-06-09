@@ -48,13 +48,16 @@ async function listExpenses(filters = {}) {
   return all;
 }
 
+async function listExpensesPaginated(filters = {}) {
+  const { search = '', categoryId = null, sortField = 'date', sortDir = 'desc', dateFrom = '', dateTo = '', offset = 0, limit = 20 } = filters;
+  const all = await listExpenses({ search, categoryId, sortField, sortDir, dateFrom, dateTo });
+  return { items: all.slice(offset, offset + limit), total: all.length, offset, limit };
+}
+
 async function addExpense(category_id, product, amount, date) {
   return addItem('expenses', { category_id, product, amount, quantity: 1, weight: null, date });
 }
-
-async function deleteExpense(id) {
-  return deleteItem('expenses', id);
-}
+async function deleteExpense(id) { return deleteItem('expenses', id); }
 
 // Доходы
 async function listIncome() {
@@ -62,16 +65,12 @@ async function listIncome() {
   all.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
   return all;
 }
-
 async function addIncome(source, equivalent, currency, amount, note, date) {
   return addItem('income', { source, equivalent, currency, amount, note, date });
 }
+async function deleteIncome(id) { return deleteItem('income', id); }
 
-async function deleteIncome(id) {
-  return deleteItem('income', id);
-}
-
-// Накопления (статусы: active=Активен, inactive=Не активен, completed=Выполнено)
+// Накопления
 async function listSavingsPlans() {
   const plans = await getAll('savings_plan');
   const txs = await getAll('savings_transactions');
@@ -83,7 +82,6 @@ async function listSavingsPlans() {
   }
   return plans;
 }
-
 async function addSavingsPlan(goal_name, target_amount, monthly_contribution, current_amount = 0) {
   const plan = await addItem('savings_plan', { goal_name, target_amount, current_amount, monthly_contribution, deadline: null, status: 'active' });
   if (current_amount > 0) {
@@ -91,7 +89,6 @@ async function addSavingsPlan(goal_name, target_amount, monthly_contribution, cu
   }
   return plan;
 }
-
 async function topupPlan(planId, amount) {
   const plan = await getById('savings_plan', planId);
   await addItem('savings_transactions', { plan_id: planId, amount, note: 'Пополнение', date: new Date().toISOString().slice(0, 10) });
@@ -100,7 +97,6 @@ async function topupPlan(planId, amount) {
   await updateItem('savings_plan', plan);
   return plan;
 }
-
 async function withdrawPlan(planId, amount) {
   const plan = await getById('savings_plan', planId);
   if (plan.current_amount < amount) throw new Error('Сумма снятия превышает накопленное');
@@ -110,13 +106,11 @@ async function withdrawPlan(planId, amount) {
   await updateItem('savings_plan', plan);
   return plan;
 }
-
 async function updatePlanStatus(planId, status) {
   const plan = await getById('savings_plan', planId);
   plan.status = status;
   await updateItem('savings_plan', plan);
 }
-
 async function deleteSavingsPlan(planId) {
   const txs = await getAll('savings_transactions');
   for (const t of txs.filter(t => t.plan_id === planId)) await deleteItem('savings_transactions', t.id);
@@ -134,17 +128,14 @@ async function listInvestments() {
   }
   return all;
 }
-
 async function addInvestment(asset_name, asset_type, buy_price, quantity, currency, note, buy_date) {
   return addItem('investments', { asset_name, asset_type, buy_price, quantity, current_price: null, currency, note, buy_date });
 }
-
 async function updateInvestmentPrice(assetId, current_price) {
   const inv = await getById('investments', assetId);
   inv.current_price = current_price;
   await updateItem('investments', inv);
 }
-
 async function deleteInvestment(assetId) { await deleteItem('investments', assetId); }
 
 // Wishlist
@@ -161,35 +152,43 @@ async function dashboardSummary() {
   const sav = await getAll('savings_plan');
   const inv = await getAll('investments');
   const wish = await getAll('wishlist');
-
   const totalIncome = inc.reduce((s, i) => s + i.amount, 0);
   const totalExpenses = exp.reduce((s, e) => s + e.amount, 0);
   const totalSavings = sav.reduce((s, p) => s + p.current_amount, 0);
   const totalInvested = inv.reduce((s, i) => s + i.buy_price * i.quantity, 0);
   const totalCurrentValue = inv.reduce((s, i) => s + (i.current_price || i.buy_price) * i.quantity, 0);
   const wishlistTotal = wish.reduce((s, w) => s + (w.estimated_cost || 0), 0);
-
-  return {
-    totalIncome, totalExpenses, balance: totalIncome - totalExpenses,
+  return { totalIncome, totalExpenses, balance: totalIncome - totalExpenses,
     totalSavings, wallet: totalIncome - totalExpenses,
     totalInvestments: totalInvested, currentInvestmentValue: totalCurrentValue,
-    wishlistItems: wish.length, wishlistTotal,
-  };
+    wishlistItems: wish.length, wishlistTotal };
 }
 
-async function monthlyBreakdown(months = 6) {
+async function monthlyBreakdown(months = 12) {
   const inc = await getAll('income');
   const exp = await getAll('expenses');
   const map = {};
-  for (const i of inc) {
-    const k = i.date.slice(0, 7); if (!map[k]) map[k] = { income: 0, expenses: 0 };
-    map[k].income += i.amount;
+  for (const i of inc) { const k = i.date.slice(0, 7); if (!map[k]) map[k] = { income: 0, expenses: 0 }; map[k].income += i.amount; }
+  for (const e of exp) { const k = e.date.slice(0, 7); if (!map[k]) map[k] = { income: 0, expenses: 0 }; map[k].expenses += e.amount; }
+  return Object.keys(map).sort().slice(-months).map(k => ({ month: k, income: map[k].income, expenses: map[k].expenses, balance: map[k].income - map[k].expenses }));
+}
+
+// Процентное соотношение расходов по категориям за месяц
+async function categoryBreakdown(monthKey) {
+  const categories = await listCategories();
+  const expenses = await getAll('expenses');
+  const monthExpenses = expenses.filter(e => e.date.slice(0, 7) === monthKey);
+  const total = monthExpenses.reduce((s, e) => s + e.amount, 0);
+  if (total === 0) return [];
+  const map = {};
+  for (const e of monthExpenses) {
+    map[e.category_id] = (map[e.category_id] || 0) + e.amount;
   }
-  for (const e of exp) {
-    const k = e.date.slice(0, 7); if (!map[k]) map[k] = { income: 0, expenses: 0 };
-    map[k].expenses += e.amount;
-  }
-  return Object.keys(map).sort().slice(-months).map(k => ({
-    month: k, income: map[k].income, expenses: map[k].expenses, balance: map[k].income - map[k].expenses,
-  }));
+  return Object.entries(map)
+    .map(([catId, amount]) => {
+      const cat = categories.find(c => c.id === parseInt(catId));
+      return { name: cat ? cat.name : '?', color: cat ? cat.color : null, amount, percent: Math.round(amount / total * 100) };
+    })
+    .sort((a, b) => b.amount - a.amount)
+    .filter(c => c.amount > 0);
 }
