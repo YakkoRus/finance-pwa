@@ -84,8 +84,12 @@ async function listSavingsPlans() {
   return plans;
 }
 
-async function addSavingsPlan(goal_name, target_amount, monthly_contribution) {
-  return addItem('savings_plan', { goal_name, target_amount, current_amount: 0, monthly_contribution, deadline: null, status: 'active' });
+async function addSavingsPlan(goal_name, target_amount, monthly_contribution, current_amount = 0) {
+  const plan = await addItem('savings_plan', { goal_name, target_amount, current_amount, monthly_contribution, deadline: null, status: 'active' });
+  if (current_amount > 0) {
+    await addItem('savings_transactions', { plan_id: plan, amount: current_amount, note: 'Начальный взнос', date: new Date().toISOString().slice(0, 10) });
+  }
+  return plan;
 }
 
 async function topupPlan(planId, amount) {

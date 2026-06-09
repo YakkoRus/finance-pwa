@@ -300,17 +300,21 @@ async function showSavingsModal() {
     <div class="form-group"><label>Цель</label><input id="sm-goal" placeholder="Название цели"></div>
     <div class="form-group"><label>Целевая сумма</label><input type="number" id="sm-target" placeholder="0" oninput="calcMonths()"></div>
     <div class="form-group"><label>Ежемес. взнос</label><input type="number" id="sm-monthly" placeholder="0" oninput="calcMonths()"></div>
+    <div class="form-group"><label>Текущая сумма</label><input type="number" id="sm-current" placeholder="0" value="0"></div>
     <div id="sm-estimate" style="font-size:0.85rem;color:var(--text-muted);margin-bottom:8px;"></div>
     <div class="modal-actions"><button class="btn" onclick="closeModal()">Отмена</button><button class="btn" id="sm-save" style="border-color:var(--green);color:var(--green);">Создать</button></div>`);
   window.calcMonths = () => {
     const t = parseFloat(document.getElementById('sm-target').value) || 0;
+    const c = parseFloat(document.getElementById('sm-current').value) || 0;
     const m = parseFloat(document.getElementById('sm-monthly').value) || 0;
-    document.getElementById('sm-estimate').textContent = (m > 0 && t > 0) ? `≈${Math.ceil(t / m)} месяцев при взносе ${m.toLocaleString()}` : '';
+    const est = document.getElementById('sm-estimate');
+    const remaining = Math.max(0, t - c);
+    est.textContent = (m > 0 && t > 0) ? `≈${Math.ceil(remaining / m)} месяцев при взносе ${m.toLocaleString()}` : '';
   };
   document.getElementById('sm-save').onclick = async () => {
     const g = document.getElementById('sm-goal').value, t = parseFloat(document.getElementById('sm-target').value);
     if (!g || !t) return;
-    await addSavingsPlan(g, t, parseFloat(document.getElementById('sm-monthly').value) || 0);
+    await addSavingsPlan(g, t, parseFloat(document.getElementById('sm-monthly').value) || 0, parseFloat(document.getElementById('sm-current').value) || 0);
     closeModal(); renderSavings();
   };
 }
