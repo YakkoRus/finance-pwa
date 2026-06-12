@@ -18,10 +18,6 @@
     <div class="section-actions"><h2 id="page-title">Дашборд</h2></div>
     <div id="content"></div>
   </div>
-  <div id="view-switcher" class="view-switcher">
-    <button class="view-btn" onclick="toggleView('desktop')">ПК</button>
-    <button class="view-btn" onclick="toggleView('mobile')">Телефон</button>
-  </div>
   <script>
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('sw.js').catch(function(){});

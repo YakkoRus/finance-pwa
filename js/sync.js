@@ -22,33 +22,54 @@ async function exportData() {
 }
 
 async function importData(data) {
-  // Мердж: добавляем только записи с id, которых ещё нет локально
-  const merge = async (store, items) => {
+  const remoteTime = data.exported_at || '';
+
+  const mergeSmart = async (store, items, idField = 'id') => {
     const existing = await getAll(store);
-    const existingIds = new Set(existing.map(i => i.id));
+    const existingMap = new Map(existing.map(i => [i[idField], i]));
+
     for (const item of items) {
-      if (!existingIds.has(item.id)) {
-        await updateItem(store, item); // put = insert or update
+      const local = existingMap.get(item[idField]);
+      if (!local) {
+        // Нет локальной — добавляем
+        await updateItem(store, item);
+      } else {
+        // Есть локальная — сравниваем данные (исключая id)
+        const localClone = { ...local };
+        const itemClone = { ...item };
+        delete localClone[idField];
+        delete itemClone[idField];
+
+        const localStr = JSON.stringify(localClone);
+        const remoteStr = JSON.stringify(itemClone);
+
+        if (localStr !== remoteStr) {
+          // Данные различаются — определяем, кто новее по exported_at
+          // Если локальная запись новее удалённой — не трогаем
+          // Иначе обновляем локальную
+          if (remoteTime > (local._synced_at || '')) {
+            await updateItem(store, { ...item, _synced_at: remoteTime });
+          }
+        }
       }
     }
   };
-  await merge('expense_categories', data.expense_categories || []);
-  await merge('expenses', data.expenses || []);
-  await merge('income', data.income || []);
-  await merge('savings_plan', data.savings_plan || []);
-  await merge('savings_transactions', data.savings_transactions || []);
-  await merge('investments', data.investments || []);
-  await merge('wishlist', data.wishlist || []);
+
+  await mergeSmart('expense_categories', data.expense_categories || []);
+  await mergeSmart('expenses', data.expenses || []);
+  await mergeSmart('income', data.income || []);
+  await mergeSmart('savings_plan', data.savings_plan || []);
+  await mergeSmart('savings_transactions', data.savings_transactions || []);
+  await mergeSmart('investments', data.investments || []);
+  await mergeSmart('wishlist', data.wishlist || []);
 }
 
 async function findGistId(token) {
-  // Ищем gist с описанием "Finance DB backup" среди всех гистов пользователя
   try {
     const headers = {
       'Authorization': 'token ' + token,
       'Accept': 'application/vnd.github.v3+json',
     };
-    // Получаем список всех гистов (с фильтром по страницам)
     let page = 1;
     while (true) {
       const resp = await fetch('https://api.github.com/gists?per_page=100&page=' + page, { headers });
@@ -99,7 +120,6 @@ async function pushToGist(token) {
 async function pullFromGist(token) {
   if (!token) throw new Error('Токен не задан');
   let gistId = getGistId();
-  // Если ID не сохранён локально — ищем среди всех гистов
   if (!gistId) {
     gistId = await findGistId(token);
     if (gistId) setGistId(gistId);
@@ -125,4 +145,17 @@ async function syncGist(token) {
     await pushToGist(token);
   }
   return getGistId();
+}
+
+// Авто-синхронизация в фоне (не ждём ответа, не блокируем UI)
+async function autoSync() {
+  const token = getToken();
+  if (!token) return;
+  try {
+    const remote = await pullFromGist(token);
+    if (remote) await importData(remote);
+    await pushToGist(token);
+  } catch (e) {
+    console.warn('autoSync failed:', e.message);
+  }
 }

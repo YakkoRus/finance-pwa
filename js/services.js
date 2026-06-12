@@ -55,7 +55,9 @@ async function listExpensesPaginated(filters = {}) {
 }
 
 async function addExpense(category_id, product, amount, date) {
-  return addItem('expenses', { category_id, product, amount, quantity: 1, weight: null, date });
+  const r = await addItem('expenses', { category_id, product, amount, quantity: 1, weight: null, date });
+  autoSync();
+  return r;
 }
 async function deleteExpense(id) { return deleteItem('expenses', id); }
 
@@ -66,7 +68,9 @@ async function listIncome() {
   return all;
 }
 async function addIncome(source, equivalent, currency, amount, note, date) {
-  return addItem('income', { source, equivalent, currency, amount, note, date });
+  const r = await addItem('income', { source, equivalent, currency, amount, note, date });
+  autoSync();
+  return r;
 }
 async function deleteIncome(id) { return deleteItem('income', id); }
 
@@ -87,6 +91,7 @@ async function addSavingsPlan(goal_name, target_amount, monthly_contribution, cu
   if (current_amount > 0) {
     await addItem('savings_transactions', { plan_id: plan, amount: current_amount, note: 'Начальный взнос', date: new Date().toISOString().slice(0, 10) });
   }
+  autoSync();
   return plan;
 }
 async function topupPlan(planId, amount) {
@@ -129,7 +134,9 @@ async function listInvestments() {
   return all;
 }
 async function addInvestment(asset_name, asset_type, buy_price, quantity, currency, note, buy_date) {
-  return addItem('investments', { asset_name, asset_type, buy_price, quantity, current_price: null, currency, note, buy_date });
+  const r = await addItem('investments', { asset_name, asset_type, buy_price, quantity, current_price: null, currency, note, buy_date });
+  autoSync();
+  return r;
 }
 async function updateInvestmentPrice(assetId, current_price) {
   const inv = await getById('investments', assetId);
@@ -141,7 +148,9 @@ async function deleteInvestment(assetId) { await deleteItem('investments', asset
 // Wishlist
 async function listWishlist() { return getAll('wishlist'); }
 async function addWishlistItem(item, estimated_cost, purpose) {
-  return addItem('wishlist', { item, estimated_cost, purpose: (purpose || '').slice(0, 200) });
+  const r = await addItem('wishlist', { item, estimated_cost, purpose: (purpose || '').slice(0, 200) });
+  autoSync();
+  return r;
 }
 async function deleteWishlistItem(id) { await deleteItem('wishlist', id); }
 

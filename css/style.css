@@ -210,32 +210,60 @@ tr:hover { background: var(--bg-input); }
 .legend-income::before { content: ""; display: inline-block; width: 12px; height: 12px; background: var(--green); border-radius: 2px; margin-right: 0.3rem; vertical-align: middle; }
 .legend-expense::before { content: ""; display: inline-block; width: 12px; height: 12px; background: var(--red); border-radius: 2px; margin-right: 0.3rem; vertical-align: middle; }
 
-/* ── Переключатель ПК / Телефон ── */
-.view-switcher {
-  position: fixed; bottom: 1rem; right: 1rem;
-  display: flex; flex-direction: column; gap: 0.4rem; z-index: 200;
-}
-.view-btn {
-  padding: 0.35rem 0.75rem; border: 1px solid var(--border);
-  background: var(--bg-card); color: var(--text-muted);
-  border-radius: var(--radius); cursor: pointer; font-size: 0.75rem; transition: 0.15s;
-}
-.view-btn:hover { border-color: var(--accent); color: var(--accent); }
-
-/* ── Эмуляция мобильного вида ── */
-body.mobile-view .main-content { max-width: 420px; margin-left: auto; margin-right: auto; padding: 0.75rem; }
-body.mobile-view .sidebar { display: none; }
-body.mobile-view .dash-grid { grid-template-columns: 1fr 1fr; }
-body.mobile-view .form-row { flex-direction: column; }
-
 @media (max-width: 768px) {
-  .sidebar { width: 60px; }
-  .sidebar-logo { font-size: 0; }
-  .sidebar-nav a { padding: 0.5rem; font-size: 0; text-align: center; }
-  .sidebar-nav a::first-letter { font-size: 1.2rem; }
-  .main-content { margin-left: 60px; }
-  .dash-grid { grid-template-columns: 1fr 1fr; }
+  .sidebar { display: none; }
+  .main-content {
+    margin-left: 0;
+    padding: 0.75rem;
+    padding-bottom: 80px;
+    max-width: 100%;
+  }
+  .dash-grid { grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+  .dash-item { padding: 0.75rem; }
+  .dash-item .value { font-size: 1.3rem; }
+
+  /* таблицы → карточки */
+  table, thead, tbody, th, td, tr { display: block; }
+  thead { display: none; }
+  tr {
+    margin-bottom: 0.5rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 0.5rem;
+    background: var(--bg-card);
+  }
+  td {
+    display: flex; justify-content: space-between;
+    padding: 0.25rem 0; border: none;
+    font-size: 0.85rem;
+  }
+  td::before {
+    content: attr(data-label);
+    font-weight: 600; color: var(--text-muted);
+    margin-right: 0.5rem; flex-shrink: 0;
+  }
+
+  .filter-bar { flex-direction: column; }
   .form-row { flex-direction: column; }
+  .modal { min-width: auto; width: 95%; }
+
+  #bottom-bar {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    height: 64px; background: var(--bg-card);
+    border-top: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-around;
+    z-index: 100;
+  }
+  #bottom-bar a {
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+    text-decoration: none; color: var(--text-muted); font-size: 10px; padding: 4px 2px;
+  }
+  #bottom-bar a.active { color: var(--accent); }
+  #bottom-bar a .icon { font-size: 18px; }
+
+  .section-actions { flex-direction: column; align-items: flex-start; }
+  .card { padding: 0.75rem; margin-bottom: 0.75rem; }
+  .monthly-chart { font-size: 0.8rem; }
 }
 
 /* ── Секция действий ── */
