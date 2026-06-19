@@ -78,6 +78,7 @@ async function renderDashboard() {
       <button class="btn small" onclick="shiftMonth(1)">▶</button>
     </div><div id="month-chart-area"></div></div>`;
   }
+  h += '<div style="margin-top:16px;"><button class="btn" onclick="navigate(\'sync\')">Синхронизация</button></div>';
   c.innerHTML = h;
   if (breakdown.length) renderMonthChart();
 }

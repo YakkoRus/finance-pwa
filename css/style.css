@@ -213,7 +213,7 @@ tr:hover { background: var(--bg-input); }
 @media (max-width: 768px) {
   .sidebar { display: none; }
   .main-content {
-    margin-left: 0;
+    margin-left: 0 !important;
     padding: 0.75rem;
     padding-bottom: 80px;
     max-width: 100%;
