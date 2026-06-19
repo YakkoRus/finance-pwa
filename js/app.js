@@ -145,7 +145,7 @@ async function renderExpenses() {
   items.forEach(e => {
     const color = categoryColor(categories, e.category_id);
     const stripe = color ? `<div style="width:4px;height:20px;background:${color};border-radius:2px;flex-shrink:0;"></div>` : '';
-    h += `<tr><td>${stripe}</td><td>${categoryName(categories, e.category_id)}</td><td>${e.product}</td><td style="color:var(--red)">-${e.amount.toLocaleString()}</td><td>${fmtDate(e.date)}</td><td><button class="btn-del" onclick="deleteExpenseAndRefresh(${e.id})">-</button></td></tr>`;
+    h += `<tr><td data-label="">${stripe}</td><td data-label="Категория">${categoryName(categories, e.category_id)}</td><td data-label="Товар">${e.product}</td><td data-label="Сумма" style="color:var(--red)">-${e.amount.toLocaleString()}</td><td data-label="Дата">${fmtDate(e.date)}</td><td data-label=""><button class="btn-del" onclick="deleteExpenseAndRefresh(${e.id})">-</button></td></tr>`;
   });
   h += '</tbody></table></div>';
   if (expOffset + items.length < total) h += '<div id="exp-sentinel" style="height:20px;"></div>';
@@ -177,7 +177,7 @@ async function loadMoreExpenses() {
     const color = categoryColor(categories, e.category_id);
     const stripe = color ? `<div style="width:4px;height:20px;background:${color};border-radius:2px;flex-shrink:0;"></div>` : '';
     const tr = document.createElement('tr');
-    tr.innerHTML = `<td>${stripe}</td><td>${categoryName(categories, e.category_id)}</td><td>${e.product}</td><td style="color:var(--red)">-${e.amount.toLocaleString()}</td><td>${fmtDate(e.date)}</td><td><button class="btn-del" onclick="deleteExpenseAndRefresh(${e.id})">-</button></td>`;
+    tr.innerHTML = `<td data-label="">${stripe}</td><td data-label="Категория">${categoryName(categories, e.category_id)}</td><td data-label="Товар">${e.product}</td><td data-label="Сумма" style="color:var(--red)">-${e.amount.toLocaleString()}</td><td data-label="Дата">${fmtDate(e.date)}</td><td data-label=""><button class="btn-del" onclick="deleteExpenseAndRefresh(${e.id})">-</button></td>`;
     tbody.appendChild(tr);
   });
   if (expOffset + items.length >= total) { if (sentinel) sentinel.remove(); expHasMore = false; }
@@ -243,7 +243,7 @@ async function renderIncome() {
   const el = { cash: 'Наличные', card: 'Карта', crypto: 'Крипта' };
   let h = `<div class="card"><div class="section-actions"><span></span><button class="btn-add" onclick="showIncomeModal()" title="Добавить">+</button></div>
     <table><thead><tr><th>Источник</th><th>Тип</th><th>Валюта</th><th>Сумма</th><th>Примечание</th><th>Дата</th><th></th></tr></thead><tbody>`;
-  items.forEach(i => h += `<tr><td>${i.source}</td><td><span class="badge ${i.equivalent}">${el[i.equivalent]||i.equivalent}</span></td><td>${i.currency}</td><td style="color:var(--green)">+${i.amount.toLocaleString()}</td><td>${i.note||''}</td><td>${fmtDate(i.date)}</td><td><button class="btn-del" onclick="deleteIncomeAndRefresh(${i.id})">-</button></td></tr>`);
+  items.forEach(i => h += `<tr><td data-label="Источник">${i.source}</td><td data-label="Тип"><span class="badge ${i.equivalent}">${el[i.equivalent]||i.equivalent}</span></td><td data-label="Валюта">${i.currency}</td><td data-label="Сумма" style="color:var(--green)">+${i.amount.toLocaleString()}</td><td data-label="Примечание">${i.note||''}</td><td data-label="Дата">${fmtDate(i.date)}</td><td data-label=""><button class="btn-del" onclick="deleteIncomeAndRefresh(${i.id})">-</button></td></tr>`);
   h += '</tbody></table></div>';
   if (!items.length) h += '<div style="text-align:center;padding:24px;color:var(--text-muted);">Нет доходов</div>';
   c.innerHTML = h;
@@ -386,7 +386,7 @@ function renderSync() {
   const c = document.getElementById('content');
   const token = getToken();
   c.innerHTML = `<div class="card"><h2>GitHub Токен</h2><div class="form-row"><input type="password" id="sync-token" value="${token}" placeholder="ghp_..." style="flex:2;"><button class="btn" onclick="saveToken()">Сохранить</button></div><div style="font-size:0.75rem;color:var(--text-muted);margin-top:0.5rem;">Создайте токен с правами gist на github.com/settings/tokens</div></div>
-    <div class="card"><div style="display:flex;gap:8px;"><button class="btn" onclick="doPush()" ${!token?'disabled':''}>Выгрузить</button><button class="btn" onclick="doPull()" ${!token?'disabled':''}>Загрузить</button><button class="btn" onclick="doSync()" ${!token?'disabled':''}>Синхронизировать</button></div><div class="sync-log" id="sync-log">Лог операций</div></div>`;
+    <div class="card"><div style="display:flex;gap:8px;"><button class="btn" onclick="doPush()" ${!token?'disabled':''}>Выгрузить</button><button class="btn" onclick="doPull()" ${!token?'disabled':''}>Загрузить</button><button class="btn" onclick="doSync()" ${!token?'disabled':''}>Синхронизировать</button><button class="btn" onclick="downloadJSON()">Экспорт JSON</button></div><div class="sync-log" id="sync-log">Лог операций</div></div>`;
 }
 window.saveToken = () => { const t = document.getElementById('sync-token').value.trim(); if (t) { setToken(t); renderSync(); } };
 function syncLog(msg) { const el = document.getElementById('sync-log'); if (el) el.textContent += '\n' + msg; }

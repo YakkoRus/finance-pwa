@@ -222,26 +222,37 @@ tr:hover { background: var(--bg-input); }
   .dash-item { padding: 0.75rem; }
   .dash-item .value { font-size: 1.3rem; }
 
-  /* таблицы → карточки */
+  /* таблицы → сетка 3×2 */
   table, thead, tbody, th, td, tr { display: block; }
   thead { display: none; }
   tr {
     margin-bottom: 0.5rem;
     border: 1px solid var(--border);
     border-radius: var(--radius);
-    padding: 0.5rem;
+    padding: 0;
     background: var(--bg-card);
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 1px;
+    overflow: hidden;
   }
   td {
-    display: flex;
-    padding: 0.25rem 0; border: none;
-    font-size: 0.85rem;
+    display: flex; flex-direction: column;
+    padding: 0.35rem 0.5rem; border: none;
+    font-size: 0.8rem;
+    background: var(--bg-card);
   }
   td::before {
     content: attr(data-label);
     font-weight: 600; color: var(--text-muted);
-    margin-right: 0.5rem; flex-shrink: 0;
+    font-size: 0.65rem; margin-bottom: 2px;
   }
+  td.btn-cell, td:last-child {
+    grid-column: 1 / -1;
+    display: flex; justify-content: flex-end;
+    padding: 0.25rem 0.5rem;
+  }
+  td.btn-cell::before, td:last-child::before { display: none; }
 
   .filter-bar { flex-direction: column; }
   .form-row { flex-direction: column; }
