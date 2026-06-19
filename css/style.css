@@ -233,7 +233,7 @@ tr:hover { background: var(--bg-input); }
     background: var(--bg-card);
   }
   td {
-    display: flex; justify-content: space-between;
+    display: flex;
     padding: 0.25rem 0; border: none;
     font-size: 0.85rem;
   }
@@ -268,7 +268,7 @@ tr:hover { background: var(--bg-input); }
 
 /* ── Секция действий ── */
 .section-actions {
-  display: flex; justify-content: space-between; align-items: center;
+  display: flex; align-items: center;
   margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;
 }
 
