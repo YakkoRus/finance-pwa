@@ -74,36 +74,42 @@ async function getById(storeName, id) {
 async function addItem(storeName, item) {
   const d = await openDB();
   return new Promise((resolve, reject) => {
-    const req = d.transaction(storeName, 'readwrite').objectStore(storeName).add(item);
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = (e) => reject(e.target.error);
+    const tx = d.transaction(storeName, 'readwrite');
+    const req = tx.objectStore(storeName).add(item);
+    req.onsuccess = () => {};
+    tx.oncomplete = () => resolve(req.result);
+    tx.onerror = (e) => reject(e.target.error);
   });
 }
 
 async function updateItem(storeName, item) {
   const d = await openDB();
   return new Promise((resolve, reject) => {
-    const req = d.transaction(storeName, 'readwrite').objectStore(storeName).put(item);
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = (e) => reject(e.target.error);
+    const tx = d.transaction(storeName, 'readwrite');
+    const req = tx.objectStore(storeName).put(item);
+    req.onsuccess = () => {};
+    tx.oncomplete = () => resolve(req.result);
+    tx.onerror = (e) => reject(e.target.error);
   });
 }
 
 async function deleteItem(storeName, id) {
   const d = await openDB();
   return new Promise((resolve, reject) => {
-    const req = d.transaction(storeName, 'readwrite').objectStore(storeName).delete(id);
-    req.onsuccess = () => resolve();
-    req.onerror = (e) => reject(e.target.error);
+    const tx = d.transaction(storeName, 'readwrite');
+    tx.objectStore(storeName).delete(id);
+    tx.oncomplete = () => resolve();
+    tx.onerror = (e) => reject(e.target.error);
   });
 }
 
 async function clearStore(storeName) {
   const d = await openDB();
   return new Promise((resolve, reject) => {
-    const req = d.transaction(storeName, 'readwrite').objectStore(storeName).clear();
-    req.onsuccess = () => resolve();
-    req.onerror = (e) => reject(e.target.error);
+    const tx = d.transaction(storeName, 'readwrite');
+    tx.objectStore(storeName).clear();
+    tx.oncomplete = () => resolve();
+    tx.onerror = (e) => reject(e.target.error);
   });
 }
 
