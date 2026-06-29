@@ -31,10 +31,10 @@ async function importData(data) {
     for (const item of items) {
       const local = existingMap.get(item[idField]);
       if (!local) {
-        // Нет локальной — добавляем
+        // No local — add from remote
         await updateItem(store, item);
       } else {
-        // Есть локальная — сравниваем данные (исключая id)
+        // Local exists — compare data (excluding id)
         const localClone = { ...local };
         const itemClone = { ...item };
         delete localClone[idField];
@@ -44,12 +44,21 @@ async function importData(data) {
         const remoteStr = JSON.stringify(itemClone);
 
         if (localStr !== remoteStr) {
-          // Данные различаются — определяем, кто новее по exported_at
-          // Если локальная запись новее удалённой — не трогаем
-          // Иначе обновляем локальную
+          // Data differs — newer wins by exported_at
           if (remoteTime > (local._synced_at || '')) {
             await updateItem(store, { ...item, _synced_at: remoteTime });
           }
+        }
+      }
+    }
+
+    // Delete local items not present in remote
+    // Only if remote is not empty (protects against empty Gist wipe)
+    if (items.length > 0) {
+      const remoteIds = new Set(items.map(i => i[idField]));
+      for (const local of existing) {
+        if (!remoteIds.has(local[idField])) {
+          await deleteItem(store, local[idField]);
         }
       }
     }
