@@ -59,7 +59,7 @@ async function addExpense(category_id, product, amount, date) {
   autoSync();
   return r;
 }
-async function deleteExpense(id) { return deleteItem('expenses', id); }
+async function deleteExpense(id) { const r = await deleteItem('expenses', id); autoSync(); return r; }
 
 // Доходы
 async function listIncome() {
@@ -72,7 +72,7 @@ async function addIncome(source, equivalent, currency, amount, note, date) {
   autoSync();
   return r;
 }
-async function deleteIncome(id) { return deleteItem('income', id); }
+async function deleteIncome(id) { const r = await deleteItem('income', id); autoSync(); return r; }
 
 // Накопления
 async function listSavingsPlans() {
@@ -143,7 +143,7 @@ async function updateInvestmentPrice(assetId, current_price) {
   inv.current_price = current_price;
   await updateItem('investments', inv);
 }
-async function deleteInvestment(assetId) { await deleteItem('investments', assetId); }
+async function deleteInvestment(assetId) { await deleteItem('investments', assetId); autoSync(); }
 
 // Wishlist
 async function listWishlist() { return getAll('wishlist'); }
@@ -152,7 +152,7 @@ async function addWishlistItem(item, estimated_cost, purpose) {
   autoSync();
   return r;
 }
-async function deleteWishlistItem(id) { await deleteItem('wishlist', id); }
+async function deleteWishlistItem(id) { await deleteItem('wishlist', id); autoSync(); }
 
 // Дашборд
 async function dashboardSummary() {

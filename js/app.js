@@ -145,7 +145,7 @@ async function renderExpenses() {
   items.forEach(e => {
     const color = categoryColor(categories, e.category_id);
     const stripe = color ? `<div style="width:4px;height:20px;background:${color};border-radius:2px;flex-shrink:0;"></div>` : '';
-    h += `<tr><td data-label="">${stripe}</td><td data-label="Категория">${categoryName(categories, e.category_id)}</td><td data-label="Товар">${e.product}</td><td data-label="Сумма" style="color:var(--red)">-${e.amount.toLocaleString()}</td><td data-label="Дата">${fmtDate(e.date)}</td><td data-label=""><button class="btn-del" onclick="deleteExpenseAndRefresh(${e.id})">-</button></td></tr>`;
+    h += `<tr><td data-label="">${stripe}</td><td data-label="Категория">${categoryName(categories, e.category_id)}</td><td data-label="Товар">${e.product}</td><td data-label="Сумма" style="color:var(--red)">-${e.amount.toLocaleString()}</td><td data-label="Дата">${fmtDate(e.date)}</td><td class="action-cell"><button class="btn-del" onclick="deleteExpenseAndRefresh(${e.id})">-</button></td></tr>`;
   });
   h += '</tbody></table></div>';
   if (expOffset + items.length < total) h += '<div id="exp-sentinel" style="height:20px;"></div>';
@@ -177,7 +177,7 @@ async function loadMoreExpenses() {
     const color = categoryColor(categories, e.category_id);
     const stripe = color ? `<div style="width:4px;height:20px;background:${color};border-radius:2px;flex-shrink:0;"></div>` : '';
     const tr = document.createElement('tr');
-    tr.innerHTML = `<td data-label="">${stripe}</td><td data-label="Категория">${categoryName(categories, e.category_id)}</td><td data-label="Товар">${e.product}</td><td data-label="Сумма" style="color:var(--red)">-${e.amount.toLocaleString()}</td><td data-label="Дата">${fmtDate(e.date)}</td><td data-label=""><button class="btn-del" onclick="deleteExpenseAndRefresh(${e.id})">-</button></td>`;
+    tr.innerHTML = `<td data-label="">${stripe}</td><td data-label="Категория">${categoryName(categories, e.category_id)}</td><td data-label="Товар">${e.product}</td><td data-label="Сумма" style="color:var(--red)">-${e.amount.toLocaleString()}</td><td data-label="Дата">${fmtDate(e.date)}</td><td class="action-cell"><button class="btn-del" onclick="deleteExpenseAndRefresh(${e.id})">-</button></td>`;
     tbody.appendChild(tr);
   });
   if (expOffset + items.length >= total) { if (sentinel) sentinel.remove(); expHasMore = false; }
@@ -221,7 +221,7 @@ async function showCategoriesModal() {
     <div class="form-row"><input id="cat-name" placeholder="Новая категория"><input id="cat-color" placeholder="#3fb950" style="flex:0;width:100px;"><button class="btn" onclick="addCategoryAction()" style="flex:0;">Добавить</button></div>
     <div class="mb-8" style="display:flex;gap:4px;flex-wrap:wrap;">${PALETTE.map(c => `<span style="display:inline-block;width:24px;height:24px;background:${c};border-radius:4px;cursor:pointer;border:1px solid var(--border);" onclick="document.getElementById('cat-color').value='${c}'" title="${c}"></span>`).join('')}</div>
     <table><tbody>
-      ${cats.map(c => `<tr><td><span style="display:inline-block;width:14px;height:14px;background:${c.color||'transparent'};border-radius:3px;margin-right:8px;vertical-align:middle;"></span>${c.name}</td><td style="font-size:12px;color:var(--text-muted);">${c.color||''}</td><td><button class="btn small" onclick="editCategoryColor(${c.id},'${c.name}','${c.color||''}')">✏</button></td><td><button class="btn-del" onclick="deleteCategoryAction(${c.id})">-</button></td></tr>`).join('')}
+      ${cats.map(c => `<tr><td><span style="display:inline-block;width:14px;height:14px;background:${c.color||'transparent'};border-radius:3px;margin-right:8px;vertical-align:middle;"></span>${c.name}</td><td style="font-size:12px;color:var(--text-muted);">${c.color||''}</td><td><button class="btn small" onclick="editCategoryColor(${c.id},'${c.name}','${c.color||''}')">✏</button></td><td class="action-cell"><button class="btn-del" onclick="deleteCategoryAction(${c.id})">-</button></td></tr>`).join('')}
     </tbody></table>
     <div class="modal-actions"><button class="btn" onclick="closeModal()">Закрыть</button></div>`);
   window.addCategoryAction = async () => { const n = document.getElementById('cat-name').value.trim(); if (!n) return; await addCategory(n, document.getElementById('cat-color').value || null); closeModal(); showCategoriesModal(); };
@@ -242,8 +242,8 @@ async function renderIncome() {
   const c = document.getElementById('content');
   const el = { cash: 'Наличные', card: 'Карта', crypto: 'Крипта' };
   let h = `<div class="card"><div class="section-actions"><span></span><button class="btn-add" onclick="showIncomeModal()" title="Добавить">+</button></div>
-    <table><thead><tr><th>Источник</th><th>Тип</th><th>Валюта</th><th>Сумма</th><th>Примечание</th><th>Дата</th><th></th></tr></thead><tbody>`;
-  items.forEach(i => h += `<tr><td data-label="Источник">${i.source}</td><td data-label="Тип"><span class="badge ${i.equivalent}">${el[i.equivalent]||i.equivalent}</span></td><td data-label="Валюта">${i.currency}</td><td data-label="Сумма" style="color:var(--green)">+${i.amount.toLocaleString()}</td><td data-label="Примечание">${i.note||''}</td><td data-label="Дата">${fmtDate(i.date)}</td><td data-label=""><button class="btn-del" onclick="deleteIncomeAndRefresh(${i.id})">-</button></td></tr>`);
+    <table><thead><tr><th>Источник</th><th>Тип</th><th>Валюта</th><th>Сумма</th><th>Дата</th><th></th></tr></thead><tbody>`;
+  items.forEach(i => h += `<tr><td data-label="Источник">${i.source}</td><td data-label="Тип"><span class="badge ${i.equivalent}">${el[i.equivalent]||i.equivalent}</span></td><td data-label="Валюта">${i.currency}</td><td data-label="Сумма" style="color:var(--green)">+${i.amount.toLocaleString()}</td><td data-label="Дата">${fmtDate(i.date)}</td><td class="action-cell"><button class="btn-del" onclick="deleteIncomeAndRefresh(${i.id})">-</button></td></tr>`);
   h += '</tbody></table></div>';
   if (!items.length) h += '<div style="text-align:center;padding:24px;color:var(--text-muted);">Нет доходов</div>';
   c.innerHTML = h;
@@ -257,13 +257,12 @@ async function showIncomeModal() {
     <div class="form-group"><label>Сумма</label><input type="number" id="im-amount" placeholder="0"></div>
     <div class="form-group"><label>Тип</label><select id="im-equiv"><option value="card">Карта</option><option value="cash">Наличные</option><option value="crypto">Крипта</option></select></div>
     <div class="form-group"><label>Валюта</label><select id="im-currency"><option>RUB</option><option>USD</option><option>EUR</option></select></div>
-    <div class="form-group"><label>Примечание</label><input id="im-note"></div>
     <div class="form-group"><label>Дата</label><input type="date" id="im-date" value="${today}"></div>
     <div class="modal-actions"><button class="btn" onclick="closeModal()">Отмена</button><button class="btn" id="im-save" style="border-color:var(--green);color:var(--green);">Добавить</button></div>`);
   document.getElementById('im-save').onclick = async () => {
     const s = document.getElementById('im-source').value, a = parseFloat(document.getElementById('im-amount').value);
     if (!s || !a) return;
-    await addIncome(s, document.getElementById('im-equiv').value, document.getElementById('im-currency').value, a, document.getElementById('im-note').value, document.getElementById('im-date').value);
+    await addIncome(s, document.getElementById('im-equiv').value, document.getElementById('im-currency').value, a, '', document.getElementById('im-date').value);
     closeModal(); renderIncome();
   };
 }
@@ -296,7 +295,7 @@ async function renderSavings() {
   h += '<h2 style="margin:1.5rem 0 0.75rem;">Список желаний</h2><div class="section-actions"><span></span><button class="btn-add" onclick="showWishlistModal()" title="Добавить">+</button></div>';
   if (wishItems.length) {
     h += '<div class="card"><table><thead><tr><th>Цель</th><th>Цена</th><th>Примечание</th><th></th></tr></thead><tbody>';
-    wishItems.forEach(w => h += `<tr><td>${w.item}</td><td>${w.estimated_cost>0?'≈'+w.estimated_cost.toLocaleString():''}</td><td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${w.purpose||''}</td><td><button class="btn-del" onclick="deleteWishlistAction(${w.id})">-</button></td></tr>`);
+    wishItems.forEach(w => h += `<tr><td>${w.item}</td><td>${w.estimated_cost>0?'≈'+w.estimated_cost.toLocaleString():''}</td><td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${w.purpose||''}</td><td class="action-cell"><button class="btn-del" onclick="deleteWishlistAction(${w.id})">-</button></td></tr>`);
     h += '</tbody></table></div>';
   } else h += '<div style="text-align:center;padding:12px;color:var(--text-muted);">Список пуст</div>';
   c.innerHTML = h;

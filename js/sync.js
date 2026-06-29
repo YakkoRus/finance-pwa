@@ -147,13 +147,11 @@ async function syncGist(token) {
   return getGistId();
 }
 
-// Авто-синхронизация в фоне (не ждём ответа, не блокируем UI)
+// Авто-синхронизация в фоне (только push, не ждём ответа, не блокируем UI)
 async function autoSync() {
   const token = getToken();
   if (!token) return;
   try {
-    const remote = await pullFromGist(token);
-    if (remote) await importData(remote);
     await pushToGist(token);
   } catch (e) {
     console.warn('autoSync failed:', e.message);
